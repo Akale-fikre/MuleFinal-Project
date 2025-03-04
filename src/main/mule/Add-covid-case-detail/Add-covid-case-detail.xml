@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="97589052-5f10-4294-bf6a-2c81cfaddf31" >
+		<db:my-sql-connection host="localhost" port="3306" user="uhubadmin" password="123456" database="uhub_db" />
+	</db:config>
+	<sub-flow name="Add-covid-case-detail-Sub_Flow" doc:id="6152b784-86bb-459d-bdf9-5e2e2beb0e28" >
+		<!-- [STUDIO:"insert- covid-case"]<logger level="INFO" doc:name="insert- covid-case" doc:id="aefbe4ba-5b6e-4d82-ae84-7b5c4081514e" message="#[payload&#93;"/> [STUDIO] -->
+		<set-variable value="#[payload]" doc:name="main Payload" doc:id="4bba0759-1d1a-4ae8-9676-9f24b54e144b" variableName="mainData"/>
+		<ee:transform doc:name="Generating registration ID" doc:id="7cf5255e-d257-447c-959e-00ca5b6dcac6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var min = 100000
+var max = 999999
+var randomNumber = min + (random() * (max - min))
+---
+{ "randomNumber": floor(randomNumber)}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[payload.randomNumber]" doc:name="Registration ID" doc:id="fb272395-3363-4cba-a0cf-edc902172443" variableName="registrationID"/>
+		<logger level="INFO" doc:name="Logger" doc:id="59170a18-617a-4712-a503-dfd7cb7d04ea" message="#[vars.registrationID]"/>
+		<ee:transform doc:name="Mapping Payload" doc:id="e46b343a-4035-4c1c-a43e-2ac1e33dc382" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	source: vars.mainData.source,
+	caseType: vars.mainData.caseType,
+	caseType: vars.mainData.caseType,
+	firstName: vars.mainData.firstName,
+	lastName: vars.mainData.lastName,
+	phone: vars.mainData.phone,
+	email: vars.mainData.email,
+	dateOfBirth: vars.mainData.dateOfBirth,
+	nationalID: vars.mainData.nationalID,
+	nationalID: vars.mainData.nationalID,
+	nationalIDType: vars.mainData.nationalIDType,
+	registrationID: vars.registrationID,		
+	address: {	
+		streetAddress: vars.mainData.address.streetAddress,
+		city: vars.mainData.address.city,
+		state: vars.mainData.address.state,
+		postal: vars.mainData.address.postal,
+		country: vars.mainData.address.country,
+	}
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="Transformed payload" doc:id="93260753-e073-4c7a-bffd-fc7ce9a88464" variableName="transformedPayload"/>
+		<ee:transform doc:name="Transform Message" doc:id="7933f88a-1483-44fd-acad-78fdc2a991d1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{	
+	source: vars.mainData.source,
+	caseType: vars.mainData.caseType,
+	firstName: vars.mainData.firstName,
+	lastName: vars.mainData.lastName,
+	phone: vars.mainData.phone,
+	email: vars.mainData.email,
+	dateOfBirth: vars.mainData.dateOfBirth,
+	nationalID: vars.mainData.nationalID,
+	nationalIDType: vars.mainData.nationalIDType,
+	registrationID: vars.registrationID
+
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try doc:name="Try" doc:id="c15a5515-13bc-4764-a95a-bd59a5c195dd" >
+			<db:insert doc:name="Insert" doc:id="8dba7849-82a9-46b3-8a36-0c2b861f79aa" config-ref="Database_Config" autoGenerateKeys="true">
+				<db:sql ><![CDATA[INSERT INTO patients (source, caseType, firstName, lastName, phone, email, dateOfBirth, nationalID, nationalIDType, registrationID) 
+VALUES (:source, :caseType, :firstName, :lastName, :phone, :email, :dateOfBirth, :nationalID, :nationalIDType, :registrationID)]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+source: payload.source,
+caseType: payload.caseType,
+firstName: payload.firstName,
+lastName: payload.lastName,
+phone: payload.phone,
+email: payload.email,
+dateOfBirth: payload.dateOfBirth,
+nationalID: payload.nationalID,
+nationalIDType: payload.nationalIDType,
+registrationID: payload.registrationID,
+}]]]></db:input-parameters>
+			</db:insert>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8adb0cda-5e52-4977-9e50-64725b9b61a4" >
+					<ee:transform doc:name="Transform Message" doc:id="e779ff01-071f-45b4-9d44-bcdf83a2777b" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="48e24e5c-0d56-4527-9f49-91fd525528c4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var num = payload.generatedKeys[0]
+---
+//[payload.get(0).nextval]
+
+num]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="0504b4b1-10c5-4652-9650-f6082e26d9f5" variableName="generatedKeys"/>
+		<logger level="INFO" doc:name="Logger" doc:id="afffd39c-6d3f-4e34-a3a9-1fb41bed54c7" message="#[vars.generatedKeys]" />
+		<ee:transform doc:name="Transform Message" doc:id="62384ffb-af42-4319-a727-5707a36a44d9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{	
+	patient_id: vars.generatedKeys,
+	streetAddress: vars.mainData.address.streetAddress,
+	city: vars.mainData.address.city,
+	state: vars.mainData.address.state,
+	postal: vars.mainData.address.postal,
+	country: vars.mainData.address.country,
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="c7f4a3b4-4889-479d-ad90-72177da040c3" >
+			<route >
+				<try doc:name="Try" doc:id="47afddca-031a-4862-a06b-970c64fd0780" >
+					<db:insert doc:name="Insert" doc:id="23b582bb-b5bc-4004-b1f4-bcb300d5f9bd" config-ref="Database_Config">
+						<db:sql ><![CDATA[INSERT INTO addresses (patient_id, streetAddress, city, state, postal, country) 
+VALUES (:patient_id, :streetAddress, :city, :state, :postal, :country)]]></db:sql>
+						<db:input-parameters ><![CDATA[#[{
+	patient_id: payload.patient_id,
+	streetAddress: payload.streetAddress,
+	city: payload.city,
+	state: payload.state,
+	postal: payload.postal,
+	country: payload.country,
+}]]]></db:input-parameters>
+					</db:insert>
+					<error-handler >
+						<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb570d16-a1d0-4a8e-b418-c83a25e141ec" >
+							<ee:transform doc:name="Transform Message" doc:id="2be32a31-04f1-4404-8bd8-c2bf088ed809" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+						</on-error-propagate>
+					</error-handler>
+				</try>
+			</route>
+			<route >
+				<try doc:name="Try" doc:id="7da23957-3325-4a19-a3fb-f5584d3081a4" >
+					<db:insert doc:name="Insert" doc:id="c55d6b2e-a17a-4909-8300-6cafe1540606" config-ref="Database_Config">
+						<db:sql ><![CDATA[INSERT INTO users (patient_id, CREATE_DATE, UPDATE_DATE, CREATED_BY, UPDATED_BY) 
+VALUES (:patient_id, :CREATE_DATE, :UPDATE_DATE, :CREATED_BY, :UPDATED_BY)]]></db:sql>
+						<db:input-parameters ><![CDATA[#[{
+	patient_id: payload.patient_id,
+	CREATE_DATE: now(),
+	UPDATE_DATE: now(),
+	CREATED_BY: attributes.headers.CREATED_BY,
+	UPDATED_BY: attributes.headers.UPDATED_BY,
+}]]]></db:input-parameters>
+					</db:insert>
+					<error-handler >
+						<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2e766103-fd97-4909-a1d7-9ff6e07ae3a8" >
+							<ee:transform doc:name="Transform Message" doc:id="63fc57cb-9228-4ffa-af26-3d76cbab1759" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+						</on-error-propagate>
+					</error-handler>
+				</try>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Transform Message" doc:id="d4ceb3ab-4733-49fe-801d-595a11c21ee9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{	
+	"registrationID": vars.registrationID
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="a4aae948-6cc8-4572-97fa-d308382ee829" message="#[vars.registrationID]"/>
+	</sub-flow>
+</mule>
