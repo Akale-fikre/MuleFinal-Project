@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_6d48de0a_3ed9_40f0_ac7e_c7280fd5ee36_Input_Variables_nationalID = String | Null
+

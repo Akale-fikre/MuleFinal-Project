@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<sub-flow name="Case-by-national-id-Sub_Flow" doc:id="6d48de0a-3ed9-40f0-ac7e-c7280fd5ee36" >
+		<try doc:name="Try" doc:id="480c2006-3694-44dd-ba59-360553259dcd" >
+			<db:select doc:name="Select" doc:id="3daa6a0d-96e5-40eb-8fa4-a24064540355" config-ref="Database_Config">
+				<db:sql ><![CDATA[SELECT 
+    p.id AS patient_id, 
+    p.source, 
+    p.caseType, 
+    p.firstName, 
+    p.lastName, 
+    p.phone, 
+    p.email, 
+    p.dateOfBirth, 
+    p.nationalID, 
+    p.nationalIDType, 
+    p.registrationID,
+    a.id AS address_id, 
+    a.streetAddress, 
+    a.city, 
+    a.state, 
+    a.postal, 
+    a.country,
+    u.id AS user_id, 
+    u.CREATE_DATE, 
+    u.UPDATE_DATE, 
+    u.CREATED_BY, 
+    u.UPDATED_BY
+FROM patients p
+LEFT JOIN addresses a ON p.id = a.patient_id
+LEFT JOIN users u ON p.id = u.patient_id
+WHERE p.nationalID = :nationalID;]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+	nationalID: attributes.uriParams.'nationalID'
+}]]]></db:input-parameters>
+			</db:select>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="187eaa41-8e63-4dfc-b25b-db9d4117f5ef" >
+					<ee:transform doc:name="Transform Message" doc:id="63dee8d6-53ee-4f19-8d95-1c75d15fb890" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="e9f22bb5-a5d9-4c89-939b-f16850b59864" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+(payload as Array)  map (row) -> {
+    source: row.source,
+    caseID: row.registrationID,
+    caseType: row.caseType,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    phone: row.phone,
+    email: row.email,
+    dateOfBirth: row.dateOfBirth,
+    nationalID: row.nationalID,
+    nationalIDType: row.nationalIDType,
+    address: {
+        streetAddress: row.streetAddress default null,
+        city: row.city default null,
+        state: row.state default null,
+        postal: row.postal default null,
+        country: row.country default null
+    },
+    createDate: row.CREATE_DATE default null,
+    updateDate: row.UPDATE_DATE default null
+}
+
+//formattedData]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>

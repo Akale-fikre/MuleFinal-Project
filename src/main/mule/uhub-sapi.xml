@@ -40,11 +40,14 @@
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-  caseID: "3673673"
-} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+payload
+//{
+//  caseID: "3673673"
+//} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
+		<set-variable value="#[payload.registrationID]" doc:name="Set Variable" doc:id="75f311cf-fb3a-442a-832d-c69112545347" variableName="updatekey"/>
+		<flow-ref doc:name="Flow Reference" doc:id="393e6409-22c7-488d-9ecf-59bcf3e586bc" name="Update-covid-case-Sub_Flow"/>
 		<error-handler ref="Global-error-handlerError_Handler" />
     </flow>
     <flow name="get:\cases\(nationalID):uhub-sapi-config">
@@ -53,56 +56,7 @@ output application/json
                 <ee:set-variable variableName="nationalID">attributes.uriParams.'nationalID'</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-[
-  {
-    source: "Hospital1",
-    caseType: "positive",
-    firstName: "John",
-    lastName: "Nixon",
-    phone: "541-754-3010",
-    email: "john@gmail.com",
-    dateOfBirth: "1989-04-26",
-    nationalID: "209-49-6193",
-    nationalIDType: "SSN",
-    address: {
-      streetAddress: "1600 Pennsylvania Avenue NW",
-      city: "Washington",
-      state: "DC",
-      postal: "20500",
-      country: "USA"
-    },
-    createDate: "2021-05-03",
-    updateDate: "2021-05-03"
-  }, 
-  {
-    source: "Hospital1",
-    caseID: "528293",
-    caseType: "negative",
-    firstName: "John",
-    lastName: "Nixon",
-    phone: "541-754-3010",
-    email: "john@gmail.com",
-    dateOfBirth: "1989-04-26",
-    nationalID: "209-49-6193",
-    nationalIDType: "SSN",
-    address: {
-      streetAddress: "1600 Pennsylvania Avenue NW",
-      city: "Washington",
-      state: "DC",
-      postal: "20500",
-      country: "USA"
-    },
-    createDate: "2020-12-14",
-    updateDate: "2020-12-14"
-  }
-] as Array {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+        <flow-ref doc:name="Flow Reference" doc:id="1c96a3b6-c80b-4a55-a44c-2849429d8629" name="Case-by-national-id-Sub_Flow"/>
 		<error-handler ref="Global-error-handlerError_Handler" />
     </flow>
     <flow name="get:\report:uhub-sapi-config">
@@ -111,24 +65,29 @@ output application/json
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-[
-  {
-    state: "texas",
-    report: {
-      total: "46744",
-      positive: "436744",
-      recovered: "433744",
-      death: "300",
-      vaccinated: "7847848"
-    }
-  }
-] as Array {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+attributes.queryParams.'state'
+//[
+//  {
+//    state: "texas",
+//    report: {
+//      total: "46744",
+//      positive: "436744",
+//      recovered: "433744",
+//      death: "300",
+//      vaccinated: "7847848"
+//    }
+//  }
+//] as Array {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="3e0f0d56-c3a3-42fe-b3de-d8c4bd3c864b" name="case-report-Sub_Flow"/>
 		<error-handler ref="Global-error-handlerError_Handler" />
     </flow>
     <flow name="post:\cases:application\json:uhub-sapi-config">
-        <ee:transform doc:name="Transform Message">
+        <set-variable value="#[attributes.headers]" doc:name="Set Variable" doc:id="1499d77a-4504-4c43-bd5b-f44d6c73239a" variableName="CREATED_BY"/>
+		<set-variable value="#[attributes.headers]" doc:name="Set Variable" doc:id="d95b2a20-f7a8-4b08-b044-1c2352555a3a" variableName="UPDATED_BY"/>
+		<logger level="INFO" doc:name="Logger" doc:id="bbd9a857-075d-47b5-a1e8-c07ee7905a90" message="#[vars.CREATED_BY]"/>
+		<ee:transform doc:name="Transform Message">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json

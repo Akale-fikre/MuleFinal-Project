@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="Update-covid-case-Sub_Flow" doc:id="d1afe0ba-13c6-435b-97c8-c67d956d8293" >
+		<try doc:name="Try" doc:id="e1b59f90-2b96-4b06-8622-5e457d1765c5" >
+			<db:update doc:name="Update" doc:id="8de00d66-d45e-4dce-980e-b9f7974c9143" config-ref="Database_Config">
+				<db:sql ><![CDATA[UPDATE patients p
+LEFT JOIN addresses a ON p.id = a.patient_id
+SET   
+    p.source = :source,
+    p.caseType = :caseType,
+    p.firstName = :firstName,
+    p.lastName = :lastName,
+    p.phone = :phone,
+    p.email = :email,
+    p.dateOfBirth = :dateOfBirth,
+    p.nationalID = :nationalID,
+    p.nationalIDType = :nationalIDType,
+    a.streetAddress = :streetAddress,
+    a.city = :city,
+    a.state = :state,
+    a.postal = :postal,
+    a.country = :country
+WHERE p.registrationID = :registrationID;]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+	registrationID: vars.updatekey,
+	source: payload.source,
+	caseType: payload.caseType,
+	firstName: payload.firstName,
+	lastName: payload.lastName,
+	phone: payload.phone,
+	email: payload.email,
+	dateOfBirth: payload.dateOfBirth,
+	nationalID: payload.nationalID,
+	nationalIDType: payload.nationalIDType,
+	streetAddress: payload.address.streetAddress,
+	city: payload.address.city,
+	state: payload.address.state,
+	postal: payload.address.postal,
+	country: payload.address.country,
+}]]]></db:input-parameters>
+			</db:update>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="0154f13f-cc61-4d4c-a7a8-f9c78155ce24" >
+					<ee:transform doc:name="Transform Message" doc:id="71acc75b-c514-47da-8a73-0fb058b1db76" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"status": "fail",
+	"message": "Invalid information"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="d4024844-bdca-4dba-88ac-d18397d476b7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+//payload
+{
+	"caseID": vars.updatekey
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>
