@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="uhub-sapi-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="uhub-sapi-config" api="resource::0b16f98b-a629-4f8b-861a-fe691bb5047a:uhub-sapi:1.0.2:raml:zip:uhub-sapi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="uhub-sapi-main">
+        <http:listener config-ref="uhub-sapi-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="uhub-sapi-config" />
+        <error-handler ref="Global-error-handlerError_Handler">
+            
+        </error-handler>
+    </flow>
+    <flow name="uhub-sapi-console">
+        <http:listener config-ref="uhub-sapi-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="uhub-sapi-config" />
+        <error-handler ref="Global-error-handlerError_Handler">
+            
+        </error-handler>
+    </flow>
+    <flow name="put:\cases:application\json:uhub-sapi-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload
+//{
+//  caseID: "3673673"
+//} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<set-variable value="#[payload.registrationID]" doc:name="Set Variable" doc:id="75f311cf-fb3a-442a-832d-c69112545347" variableName="updatekey"/>
+		<flow-ref doc:name="Flow Reference" doc:id="393e6409-22c7-488d-9ecf-59bcf3e586bc" name="Update-covid-case-Sub_Flow"/>
+		<error-handler ref="Global-error-handlerError_Handler" />
+    </flow>
+    <flow name="get:\cases\(nationalID):uhub-sapi-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="nationalID">attributes.uriParams.'nationalID'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Reference" doc:id="1c96a3b6-c80b-4a55-a44c-2849429d8629" name="Case-by-national-id-Sub_Flow"/>
+		<error-handler ref="Global-error-handlerError_Handler" />
+    </flow>
+    <flow name="get:\report:uhub-sapi-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+attributes.queryParams.'state'
+//[
+//  {
+//    state: "texas",
+//    report: {
+//      total: "46744",
+//      positive: "436744",
+//      recovered: "433744",
+//      death: "300",
+//      vaccinated: "7847848"
+//    }
+//  }
+//] as Array {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="3e0f0d56-c3a3-42fe-b3de-d8c4bd3c864b" name="case-report-Sub_Flow"/>
+		<error-handler ref="Global-error-handlerError_Handler" />
+    </flow>
+    <flow name="post:\cases:application\json:uhub-sapi-config">
+        <set-variable value="#[attributes.headers]" doc:name="Set Variable" doc:id="1499d77a-4504-4c43-bd5b-f44d6c73239a" variableName="CREATED_BY"/>
+		<set-variable value="#[attributes.headers]" doc:name="Set Variable" doc:id="d95b2a20-f7a8-4b08-b044-1c2352555a3a" variableName="UPDATED_BY"/>
+		<logger level="INFO" doc:name="Logger" doc:id="bbd9a857-075d-47b5-a1e8-c07ee7905a90" message="#[vars.CREATED_BY]"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload
+//{
+//  registrationID: "3673673"
+//} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<flow-ref doc:name="Add-covid-case" doc:id="bd0dd140-fd5b-48c7-9c03-6e02998c4797" name="Add-covid-case-detail-Sub_Flow"/>
+		<error-handler ref="Global-error-handlerError_Handler" />
+    </flow>
+</mule>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="6d40daef-8473-407b-9f77-e68cf22d6fd4" >
+		<db:my-sql-connection host="localhost" port="3306" user="whoadmin" password="123456" database="who_db" />
+	</db:config>
+	<sub-flow name="who-covid-registration-Sub_Flow" doc:id="b37ee6cc-35b4-48ac-9f96-aa9ee0e78620" >
+		<try doc:name="Try" doc:id="ef299937-0de6-4442-8557-317242b9a277" >
+			<db:select doc:name="Select" doc:id="f9c90d4a-0b6a-40d9-bda7-a5ff2679414a" config-ref="Database_Config">
+				<db:sql ><![CDATA[select * from patients_tb_queue]]></db:sql>
+			</db:select>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a95815c8-83ac-425b-8cc3-99ff9b9bf483" >
+					<ee:transform doc:name="Transform Message" doc:id="de1f9be1-18e7-440f-a438-dc2b80c15eda" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="7c58d895-3626-41af-b81a-72ef58551a09" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+(payload as Array) map (row) -> {
+    firstName: row.firstName,
+    lastName: row.lastName,
+    phone: row.phone,
+    email: row.email,
+    dateOfBirth: row.dateOfBirth,
+    country: row.country,
+    }
+    
+//{
+//	firstName: payload.firstName,
+//	lastName: payload.lastName,
+//	phone: payload.phone,
+//	email: payload.email,
+//	dateOfBirth: payload.dateOfBirth,
+//	country: payload.country,
+//}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="9cc22201-fcd2-4b3f-8d49-259625a67cef" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="7ec1ecdc-4d9e-4861-b600-3261f9c0d773" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="35a8eaee-717d-470d-ae5d-aadd9e04fddf" message="#[payload]"/>
+		<try doc:name="Try" doc:id="8f91aaab-4237-43fb-a166-c34e5ba24726" >
+			<db:insert doc:name="Insert" doc:id="f23ba021-8647-4fb1-ae7b-0d824fa356ca" config-ref="Database_Config">
+				<db:sql ><![CDATA[INSERT INTO patients_tb (firstName, lastName, phone, email, dateOfBirth, country) 
+VALUES (:firstName, :lastName, :phone, :email, :dateOfBirth, :country)]]></db:sql>
+				<db:input-parameters ><![CDATA[#[{
+firstName: payload.firstName,
+lastName: payload.lastName,
+phone: payload.phone,
+email: payload.email,
+dateOfBirth: payload.dateOfBirth,
+country: payload.country,
+}]]]></db:input-parameters>
+			</db:insert>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="925885c3-c80a-473e-8536-f4623b8456e4" >
+					<ee:transform doc:name="Transform Message" doc:id="92386f8d-6182-47b3-90eb-63d6357868bd" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Invalid data"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="dbe1ccc1-bd91-4bee-97ca-5ee55ee054a0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  code: 200,
+  message: "Success",
+  description: "Case reported successfully",
+  dateTime: now(),
+  transactionId: "44b32520-61ee-47b4-907d-fa15869f3c4d"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>
